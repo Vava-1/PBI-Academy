@@ -3,6 +3,7 @@ services:
   - type: web
     name: pbi-backend
     env: python
+    pythonVersion: 3.11.9
     plan: free
     region: oregon
     buildCommand: cd backend && pip install -r requirements.txt
