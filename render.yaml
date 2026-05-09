@@ -9,7 +9,7 @@ services:
     startCommand: cd backend && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
-        value: sqlite+aiosqlite:///./data/pbi.db
+        value: sqlite+aiosqlite:///opt/render/project/src/backend/pbi.db
       - key: SECRET_KEY
         generateValue: true
       - key: ENVIRONMENT
@@ -20,10 +20,6 @@ services:
         sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
-    disk:
-      name: pbi-data
-      mountPath: /opt/render/project/src/backend/data
-      sizeGB: 1
 
   # Frontend
   - type: web
