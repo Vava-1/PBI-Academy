@@ -2,11 +2,10 @@ services:
   # PostgreSQL Database
   - type: pserv
     name: pbi-db
-    databaseName: pbi_db
-    user: postgres
+    database: pbi_db
     plan: starter
     region: oregon
-    maxConnections: 20
+    maxconnections: 20
 
   # Redis
   - type: redis
