@@ -3,15 +3,13 @@ services:
   - type: web
     name: pbi-backend
     env: python
-    plan: starter
+    plan: free
     region: oregon
     buildCommand: pip install -r requirements.txt
-    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: cd backend && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
-        sync: false
-      - key: REDIS_URL
-        sync: false
+        value: sqlite+aiosqlite:///./data/pbi.db
       - key: SECRET_KEY
         generateValue: true
       - key: ENVIRONMENT
@@ -22,12 +20,16 @@ services:
         sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
+    disk:
+      name: pbi-data
+      mountPath: /opt/render/project/src/backend/data
+      sizeGB: 1
 
   # Frontend
   - type: web
     name: pbi-frontend
     env: node
-    plan: starter
+    plan: free
     region: oregon
     buildCommand: npm install && npm run build
     startCommand: npm run preview

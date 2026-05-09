@@ -21,12 +21,12 @@ class Settings(BaseSettings):
     debug: bool = True
     log_level: str = "INFO"
     
-    # Database
-    database_url: str
+    # Database - supports both PostgreSQL and SQLite
+    database_url: str = "sqlite+aiosqlite:///./pbi.db"
     database_url_sync: Optional[str] = None
     
-    # Redis
-    redis_url: str = "redis://localhost:6379/0"
+    # Redis - optional, can be disabled for free tier
+    redis_url: Optional[str] = None
     
     # Security
     secret_key: str
