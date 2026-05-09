@@ -1,10 +1,9 @@
 services:
   # PostgreSQL Database
-  - type: pserv
+  - type: postgres
     name: pbi-db
     plan: starter
     region: oregon
-    startCommand: postgres
 
   # Redis
   - type: redis
