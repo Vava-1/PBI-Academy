@@ -36,8 +36,6 @@ class Settings(BaseSettings):
     
     # AI/LLM
     openai_api_key: Optional[str] = None
-    abacus_ai_api_key: Optional[str] = None
-    abacus_ai_base_url: str = "https://api.abacus.ai"
     
     # File Storage
     upload_dir: str = "uploads"

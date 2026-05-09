@@ -10,11 +10,9 @@ class LLMClient:
     
     def __init__(self):
         self.openai_key = settings.openai_api_key
-        self.abacus_key = settings.abacus_ai_api_key
-        self.abacus_base = settings.abacus_ai_base_url
         
-        # Default to OpenAI if available
-        self.provider = "openai" if self.openai_key else "abacus" if self.abacus_key else "mock"
+        # Default to OpenAI if available, otherwise mock
+        self.provider = "openai" if self.openai_key else "mock"
     
     async def chat_completion(
         self,
@@ -26,8 +24,6 @@ class LLMClient:
         """Get chat completion from LLM."""
         if self.provider == "openai":
             return await self._openai_chat(messages, temperature, max_tokens, model)
-        elif self.provider == "abacus":
-            return await self._abacus_chat(messages, temperature, max_tokens)
         else:
             # Mock response for development
             return self._mock_chat(messages)
@@ -51,32 +47,6 @@ class LLMClient:
                 },
                 json={
                     "model": model,
-                    "messages": messages,
-                    "temperature": temperature,
-                    "max_tokens": max_tokens
-                },
-                timeout=60.0
-            )
-            
-            response.raise_for_status()
-            data = response.json()
-            return data["choices"][0]["message"]["content"]
-    
-    async def _abacus_chat(
-        self,
-        messages: List[Dict[str, str]],
-        temperature: float,
-        max_tokens: int
-    ) -> str:
-        """Call Abacus AI API."""
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.abacus_base}/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.abacus_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
                     "messages": messages,
                     "temperature": temperature,
                     "max_tokens": max_tokens
