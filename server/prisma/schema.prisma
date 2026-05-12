@@ -1,0 +1,565 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String   @map("password_hash")
+  name          String
+  avatar        String   @default("/instructor-3.jpg")
+  role          Role     @default(student)
+  level         Int      @default(1)
+  points        Int      @default(0)
+  streak        Int      @default(0)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Loyalty System Fields
+  loyaltyTier   LoyaltyTier @default(BRONZE)
+  totalSpent    Float      @default(0) @map("total_spent")
+  lifetimeValue Float      @default(0) @map("lifetime_value")
+  referralCode  String?    @unique @map("referral_code")
+  referredBy    String?    @map("referred_by")
+  lastActiveAt  DateTime?  @map("last_active_at")
+  subscriptionEnd DateTime? @map("subscription_end")
+
+  enrollments   Enrollment[]
+  chatSessions  ChatSession[]
+  payments      Payment[]
+  progress      LessonProgress[]
+  achievements  UserAchievement[]
+  subscriptions Subscription[]
+  referrals     Referral[]
+  loyaltyPoints LoyaltyPoint[]
+  rewards       UserReward[]
+  adminUser     AdminUser?
+
+  @@map("users")
+}
+
+model Course {
+  id              String   @id @default(cuid())
+  title           String
+  slug            String   @unique
+  description     String
+  language        String
+  testType        String   @map("test_type")
+  level           String
+  image           String   @default("/course-default.jpg")
+  durationHours   Int      @map("duration_hours")
+  lessonsCount    Int      @map("lessons_count")
+  studentsCount   Int      @default(0) @map("students_count")
+  instructorId    String   @map("instructor_id")
+  price           Int
+  rating          Float    @default(0)
+  isPublished     Boolean  @default(true) @map("is_published")
+  category        String
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  enrollments     Enrollment[]
+  lessons         Lesson[]
+  liveClasses     LiveClass[]
+
+  @@map("courses")
+}
+
+model Instructor {
+  id          String @id @default(cuid())
+  name        String
+  title       String
+  languages   String
+  image       String @default("/instructor-default.jpg")
+  bio         String
+  students    Int    @default(0)
+  courses     Int    @default(0)
+  rating      Float  @default(0)
+
+  @@map("instructors")
+}
+
+model Lesson {
+  id          String @id @default(cuid())
+  courseId    String @map("course_id")
+  title       String
+  content     String @default("")
+  order       Int
+  durationMin Int    @default(10) @map("duration_min")
+
+  course      Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress    LessonProgress[]
+
+  @@map("lessons")
+}
+
+model Enrollment {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  courseId   String   @map("course_id")
+  progress   Int      @default(0)
+  enrolledAt DateTime @default(now()) @map("enrolled_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@map("enrollments")
+}
+
+model LessonProgress {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  lessonId    String    @map("lesson_id")
+  completed   Boolean   @default(false)
+  completedAt DateTime? @map("completed_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@map("lesson_progress")
+}
+
+model LiveClass {
+  id              String     @id @default(cuid())
+  title           String
+  description     String
+  courseId        String     @map("course_id")
+  instructorId    String     @map("instructor_id")
+  scheduledAt     DateTime   @map("scheduled_at")
+  durationMinutes Int        @map("duration_minutes")
+  status          LiveStatus @default(scheduled)
+  maxStudents     Int        @map("max_students")
+  registeredCount Int        @default(0) @map("registered_count")
+  roomUrl         String?    @map("room_url")
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("live_classes")
+}
+
+model ChatSession {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  title     String   @default("New Chat")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  sessionId String   @map("session_id")
+  role      String
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  userId          String        @map("user_id")
+  courseId        String        @map("course_id")
+  stripeSessionId String        @unique @map("stripe_session_id")
+  amount          Int
+  currency        String        @default("usd")
+  status          PaymentStatus @default(pending)
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model Achievement {
+  id          String @id @default(cuid())
+  title       String
+  description String
+  icon        String @default("trophy")
+  points      Int    @default(0)
+
+  users UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  achievementId String   @map("achievement_id")
+  earnedAt      DateTime @default(now()) @map("earned_at")
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+enum Role {
+  student
+  instructor
+  admin
+}
+
+enum LiveStatus {
+  scheduled
+  live
+  ended
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+  refunded
+}
+
+// LOYALTY SYSTEM MODELS
+model Subscription {
+  id              String            @id @default(cuid())
+  userId          String            @map("user_id")
+  planType        SubscriptionPlan  @map("plan_type")
+  status          SubscriptionStatus @default(ACTIVE)
+  stripeSubId     String?           @unique @map("stripe_sub_id")
+  currentPeriodStart DateTime        @map("current_period_start")
+  currentPeriodEnd   DateTime        @map("current_period_end")
+  cancelAtPeriodEnd Boolean          @default(false) @map("cancel_at_period_end")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model Referral {
+  id           String   @id @default(cuid())
+  referrerId  String   @map("referrer_id")
+  referredId  String   @map("referred_id")
+  status       ReferralStatus @default(PENDING)
+  rewardAmount Float    @default(0) @map("reward_amount")
+  completedAt DateTime? @map("completed_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  referrer User @relation(fields: [referrerId], references: [id], onDelete: Cascade)
+
+  @@unique([referrerId, referredId])
+  @@map("referrals")
+}
+
+model LoyaltyPoint {
+  id          String        @id @default(cuid())
+  userId      String        @map("user_id")
+  points      Int
+  source      PointSource
+  description String
+  createdAt   DateTime      @default(now()) @map("created_at")
+  expiresAt   DateTime?     @map("expires_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("loyalty_points")
+}
+
+model Reward {
+  id          String @id @default(cuid())
+  title       String
+  description String
+  pointsCost  Int    @map("points_cost")
+  type        RewardType
+  value       String // JSON string for different reward types
+  isActive    Boolean @default(true) @map("is_active")
+  tier        LoyaltyTier
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  users UserReward[]
+
+  @@map("rewards")
+}
+
+model UserReward {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  rewardId    String   @map("reward_id")
+  status      RewardStatus @default(ACTIVE)
+  claimedAt   DateTime? @map("claimed_at")
+  expiresAt   DateTime? @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reward Reward @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, rewardId])
+  @@map("user_rewards")
+}
+
+model EngagementMetric {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  metricType    MetricType @map("metric_type")
+  value         Float
+  metadata      String? // JSON string for additional data
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("engagement_metrics")
+}
+
+// LOYALTY SYSTEM ENUMS
+enum LoyaltyTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+}
+
+enum SubscriptionPlan {
+  BASIC
+  PREMIUM
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  UNPAID
+}
+
+enum ReferralStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum PointSource {
+  COURSE_COMPLETION
+  DAILY_STREAK
+  REFERRAL
+  PURCHASE
+  ENGAGEMENT
+  BONUS
+}
+
+enum RewardType {
+  DISCOUNT
+  FREE_COURSE
+  PREMIUM_FEATURE
+  MERCHANDISE
+  CERTIFICATE
+}
+
+enum RewardStatus {
+  ACTIVE
+  CLAIMED
+  EXPIRED
+}
+
+enum MetricType {
+  LOGIN
+  LESSON_COMPLETED
+  QUIZ_SCORE
+  TIME_SPENT
+  SOCIAL_SHARE
+  REFERRAL_CLICK
+}
+
+// ADMIN PANEL MODELS
+model AdminUser {
+  id            String   @id @default(cuid())
+  userId        String   @unique @map("user_id")
+  role          AdminRole @default(ADMIN)
+  permissions   String   @default("[]") // JSON string of permission array
+  lastLoginAt   DateTime? @map("last_login_at")
+  loginAttempts Int      @default(0) @map("login_attempts")
+  isLocked      Boolean  @default(false) @map("is_locked")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityLogs  AdminActivityLog[]
+  notifications  AdminNotification[]
+
+  @@map("admin_users")
+}
+
+model AdminActivityLog {
+  id          String   @id @default(cuid())
+  adminUserId String   @map("admin_user_id")
+  action      String
+  resource    String
+  resourceId  String?  @map("resource_id")
+  ipAddress   String   @map("ip_address")
+  userAgent   String   @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@map("admin_activity_logs")
+}
+
+model AdminNotification {
+  id          String            @id @default(cuid())
+  adminUserId String            @map("admin_user_id")
+  title       String
+  message     String
+  type        NotificationType @default(INFO)
+  isRead      Boolean           @default(false) @map("is_read")
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@map("admin_notifications")
+}
+
+model ContentPage {
+  id            String   @id @default(cuid())
+  title         String
+  slug          String   @unique
+  content       String   @default("")
+  excerpt       String?  @default("")
+  status        PageStatus @default(DRAFT)
+  featuredImage String?  @map("featured_image")
+  metaTitle     String?  @map("meta_title")
+  metaDescription String? @map("meta_description")
+  canonicalUrl  String?  @map("canonical_url")
+  ogImage       String?  @map("og_image")
+  publishedAt   DateTime? @map("published_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdBy     String   @map("created_by")
+
+  @@map("content_pages")
+}
+
+model MediaFile {
+  id          String      @id @default(cuid())
+  filename    String
+  originalName String     @map("original_name")
+  mimeType    String      @map("mime_type")
+  size        Int
+  path        String
+  alt         String?
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  @@map("media_files")
+}
+
+model SiteSettings {
+  id            String   @id @default(cuid())
+  key           String   @unique
+  value         String
+  type          SettingType @default(STRING)
+  category      String
+  description   String?
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("site_settings")
+}
+
+model NavigationMenu {
+  id          String   @id @default(cuid())
+  name        String
+  location    String   // header, footer, sidebar
+  items       Json     // JSON array of menu items
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("navigation_menus")
+}
+
+model FormSubmission {
+  id          String   @id @default(cuid())
+  formName    String   @map("form_name")
+  data        Json     // JSON object of form data
+  status      String   @default("new")
+  isRead      Boolean  @default(false) @map("is_read")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("form_submissions")
+}
+
+model Announcement {
+  id          String           @id @default(cuid())
+  title       String
+  content     String
+  type        AnnouncementType @default(INFO)
+  isActive    Boolean          @default(true) @map("is_active")
+  startDate   DateTime?        @map("start_date")
+  endDate     DateTime?        @map("end_date")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  @@map("announcements")
+}
+
+model DiscountCode {
+  id          String           @id @default(cuid())
+  code        String           @unique
+  description String?
+  type        DiscountType
+  value       Float
+  minAmount   Float?           @map("min_amount")
+  usageLimit  Int?             @map("usage_limit")
+  usedCount   Int              @default(0) @map("used_count")
+  isActive    Boolean          @default(true) @map("is_active")
+  expiresAt   DateTime?        @map("expires_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  @@map("discount_codes")
+}
+
+// ADMIN ENUMS
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+  MODERATOR
+  VIEWER
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}
+
+enum PageStatus {
+  DRAFT
+  PUBLISHED
+  SCHEDULED
+  ARCHIVED
+}
+
+enum SettingType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+}
+
+enum AnnouncementType {
+  INFO
+  SUCCESS
+  WARNING
+  MAINTENANCE
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
